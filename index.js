@@ -1,50 +1,67 @@
-function getDiceRollArray (diceCount) {
-   const newDiceRolls = []
-   for ( let i=1; i <= diceCount; i++) {
-      newDiceRolls.push(Math.floor(Math.random()*6 + 1))
-   }
-   return newDiceRolls
+import characterData from './data.js'
+import Character from './Character.js'
+
+let monstersArray = ["orc", "demon", "goblin"]
+let isWaiting = false
+
+function getNewMonster() {
+    const nextMonsterData = characterData[monstersArray.shift()]
+    return nextMonsterData ? new Character(nextMonsterData) : {}
 }
 
-function getDiceHtml (diceCount) {
-   return getDiceRollArray(diceCount).map(function (number){
-      return `<div class="dice">${number}</div>`
-   }).join('')
+function attack() {
+    if(!isWaiting){
+        wizard.setDiceHtml()
+        monster.setDiceHtml()
+        wizard.takeDamage(monster.currentDiceScore)
+        monster.takeDamage(wizard.currentDiceScore)
+        render()
+        
+        if(wizard.dead){
+            endGame()
+        }
+        else if(monster.dead){
+            isWaiting = true
+            if(monstersArray.length > 0){
+                setTimeout(()=>{
+                    monster = getNewMonster()
+                    render()
+                    isWaiting = false
+                },1500)
+            }
+            else{
+                endGame()
+            }
+        }    
+    }
 }
 
+function endGame() {
+    isWaiting = true
+    const endMessage = wizard.health === 0 && monster.health === 0 ?
+        "No victors - all creatures are dead" :
+        wizard.health > 0 ? "The Wizard Wins" :
+            "The monsters are Victorious"
 
-const HERO = {
-   elementId: "hero",
-   name: "Wizard",
-   avatar: "images/wizard.png",
-   health: 60,
-   diceCount: 3
+    const endEmoji = wizard.health > 0 ? "🔮" : "☠️"
+        setTimeout(()=>{
+            document.body.innerHTML = `
+                <div class="end-game">
+                    <h2>Game Over</h2> 
+                    <h3>${endMessage}</h3>
+                    <p class="end-emoji">${endEmoji}</p>
+                </div>
+                `
+        }, 1500)
 }
 
-const MONSTER = {
-   elementId: "monster",
-   name: "Orc",
-   avatar: "images/orc.png",
-   health: 10,
-   diceCount: 1
+document.getElementById("attack-button").addEventListener('click', attack)
+
+function render() {
+    document.getElementById('hero').innerHTML = wizard.getCharacterHtml()
+    document.getElementById('monster').innerHTML = monster.getCharacterHtml()
 }
 
-function renderCharacter(data) {
-   const {elementId, name, avatar, health, diceCount} = data
-   const diceHtml = getDiceHtml(diceCount)
-
-   document.getElementById(elementId).innerHTML= `
-               <div class="character-card">
-                    <h4 class="name"> ${name} </h4>
-                    <img class="avatar" src="${avatar}"/>
-                    <p class="health">health: <b> ${health} </b></p>
-                    <div class="dice-container">
-                    ${diceHtml} 
-                    </div>
-                </div> 
-               `
-}
-console.log(getDiceHtml(HERO.diceCount))
-
-renderCharacter(HERO)
-renderCharacter(MONSTER)
+const wizard = new Character(characterData.hero)
+let monster = getNewMonster()
+render()
